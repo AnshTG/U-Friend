@@ -1,0 +1,8 @@
+{
+  "name": "U Friend Chatbot",
+  "description": "A professional AI chatbot named U Friend featuring file upload support for images, videos, PDFs, and ZIP files (up to 7 items) with persistent customizable themes.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
