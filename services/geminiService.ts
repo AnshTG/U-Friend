@@ -25,7 +25,7 @@ export const sendMessageToGemini = async (
   mode: ChatMode = 'general',
   signal?: AbortSignal
 ): Promise<{ text: string; generatedImage?: string; sources?: { title: string; uri: string }[]; error?: boolean }> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const targetModel = TEXT_MODEL;
 
   const attachmentParts: Part[] = attachments.map(att => {
