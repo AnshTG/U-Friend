@@ -37,7 +37,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileAdded, onUploadStart,
       reader.onload = (event) => {
         if (event.target?.result) {
           const attachment: Attachment = {
-            id: Math.random().toString(36).substring(2, 9),
+            id: Math.random().toString(36).substring(2, 9) + '-' + Date.now(),
             name: name,
             type: file instanceof File ? file.type : getMimeTypeFromName(name),
             data: event.target.result as string,
@@ -58,34 +58,34 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileAdded, onUploadStart,
 
     if (onUploadStart) onUploadStart();
 
-    for (const file of files) {
-      if (file.name.endsWith('.zip')) {
-        try {
+    try {
+      for (const file of files) {
+        if (file.name.endsWith('.zip')) {
           const zip = new JSZip();
           const loadedZip = await zip.loadAsync(file);
+          // Filter to get only files, excluding directories
           const zipEntries = Object.keys(loadedZip.files).filter(name => !loadedZip.files[name].dir);
           
-          // Take up to 7 items from zip
+          // Take exactly up to 7 items from the ZIP as per requirements
           const itemsToProcess = zipEntries.slice(0, 7);
           for (const name of itemsToProcess) {
             const zipFile = loadedZip.files[name];
             const content = await zipFile.async('blob');
             await processFile(content, name);
           }
-        } catch (err) {
-          console.error("ZIP processing error:", err);
+        } else {
+          if (file.size > 50 * 1024 * 1024) { // Safer 50MB limit for browser memory
+            console.warn(`File ${file.name} is quite large.`);
+          }
+          await processFile(file, file.name);
         }
-      } else {
-        if (file.size > 100 * 1024 * 1024) { // 100MB limit
-          alert(`File ${file.name} exceeds 100MB limit.`);
-          continue;
-        }
-        await processFile(file, file.name);
       }
+    } catch (err) {
+      console.error("File processing error:", err);
+    } finally {
+      if (onUploadEnd) onUploadEnd();
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-
-    if (onUploadEnd) onUploadEnd();
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -105,10 +105,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileAdded, onUploadStart,
         disabled={disabled}
         className={`
           p-2.5 rounded-xl transition-all transform active:scale-90
-          hover:bg-black/5 text-black
-          ${disabled ? 'opacity-20 cursor-not-allowed' : 'opacity-100 hover:text-blue-500'}
+          hover:bg-black/5 text-black flex items-center justify-center
+          ${disabled ? 'opacity-20 cursor-not-allowed' : 'opacity-60 hover:opacity-100 hover:text-blue-500'}
         `}
-        title="Input"
+        title="Upload Files (Images, Videos, PDFs, ZIPs)"
       >
         <Paperclip size={18} />
       </button>

@@ -16,7 +16,6 @@
             margin: 0;
             padding: 0;
             background-color: var(--theme-bg);
-            /* Font colour should be black */
             color: #000000; 
             overflow: hidden;
             -webkit-font-smoothing: antialiased;
@@ -60,13 +59,11 @@
             transition: background 0.8s ease-in-out;
         }
 
-        /* Prevent input highlights that create borders */
         input:focus, textarea:focus {
             outline: none !important;
             box-shadow: none !important;
         }
 
-        /* Ensure prose doesn't override our font color */
         .prose {
             color: #000000 !important;
         }
@@ -77,9 +74,23 @@
             color: var(--theme-accent) !important;
         }
     </style>
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-markdown": "https://esm.sh/react-markdown@^9.0.0",
+    "remark-gfm": "https://esm.sh/remark-gfm@^4.0.0",
+    "jszip": "https://esm.sh/jszip@^3.10.1"
+  }
+}
+</script>
 </head>
 <body class="transition-theme">
     <div id="root"></div>
-    <script type="module" src="./index.tsx> </script>
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>

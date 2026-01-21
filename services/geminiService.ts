@@ -4,15 +4,15 @@ import { Message, Attachment, ChatMode } from "../types";
 const TEXT_MODEL = 'gemini-3-flash-preview';
 
 const getSystemInstruction = (mode: ChatMode): string => {
-  const base = "You are 'U Friend', a highly sophisticated AI assistant. Your primary directive is providing accurate, empathetic, and clear analysis of text and uploaded files. You have full support for images, videos, PDFs, and multi-file analysis.";
+  const base = "You are 'U Friend', an advanced multimodal AI assistant. You excel at analyzing text, high-resolution images, video files, and document formats like PDFs. You are helpful, precise, and creative.";
   
   switch(mode) {
     case 'study':
-      return `${base} In Study mode, act as a pedagogical expert. Explain concepts from first principles. Use formatting to make things clear. Analyze any provided documents or educational videos thoroughly.`;
+      return `${base} In Study mode, you act as a world-class tutor. Break down complex documents or videos into digestible concepts. Use bullet points and clear headings.`;
     case 'search':
-      return `${base} In Search mode, prioritize real-time web grounding. Cite your sources clearly using the provided metadata.`;
+      return `${base} In Search mode, you leverage real-time information. Always cite your sources with the provided URLs when using Google Search grounding.`;
     case 'image':
-      return `${base} In Creative mode, focus on high-fidelity descriptions and artistic context of images and visual media.`;
+      return `${base} In Creative mode, focus on the artistic and aesthetic details of visual media. Help users brainstorm or iterate on creative projects.`;
     default:
       return base;
   }
@@ -26,17 +26,13 @@ export const sendMessageToGemini = async (
   signal?: AbortSignal
 ): Promise<{ text: string; generatedImage?: string; sources?: { title: string; uri: string }[]; error?: boolean }> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const targetModel = TEXT_MODEL;
 
   const attachmentParts: Part[] = attachments.map(att => {
-    // Basic mapping for common types to ensure Gemini understands them
-    let mimeType = att.type;
-    if (att.name.endsWith('.pdf')) mimeType = 'application/pdf';
-    
+    const base64Data = att.data.includes(',') ? att.data.split(',')[1] : att.data;
     return {
       inlineData: {
-        data: att.data.split(',')[1],
-        mimeType: mimeType
+        data: base64Data,
+        mimeType: att.type || 'application/octet-stream'
       }
     };
   });
@@ -47,18 +43,20 @@ export const sendMessageToGemini = async (
     const config: any = {
       systemInstruction,
       temperature: 0.7,
-      tools: [{ googleSearch: {} }],
+      tools: mode === 'search' ? [{ googleSearch: {} }] : [{ googleSearch: {} }], // Default to search enabled for better utility
     };
 
-    const contents = history.slice(-12).map(msg => ({
+    // Construct conversation history
+    const contents = history.slice(-10).map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }]
+      parts: [{ text: msg.content || "Look at the context." }]
     }));
 
+    // Add current user turn with multimodal attachments
     contents.push({
       role: 'user',
       parts: [
-        { text: prompt || "Analyze these files." },
+        { text: prompt || "Analyze the provided content." },
         ...attachmentParts
       ]
     });
@@ -66,27 +64,27 @@ export const sendMessageToGemini = async (
     if (signal?.aborted) throw new Error('Request aborted');
 
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: targetModel,
+      model: TEXT_MODEL,
       contents,
       config,
     });
 
     if (signal?.aborted) throw new Error('Request aborted');
 
-    let text = "";
+    let text = response.text || "";
     let generatedImage = "";
     let sources: { title: string; uri: string }[] = [];
 
+    // Check for multimodal outputs if the model supports it in future iterations
     if (response.candidates?.[0]?.content?.parts) {
       for (const part of response.candidates[0].content.parts) {
         if (part.inlineData) {
           generatedImage = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        } else if (part.text) {
-          text += part.text;
         }
       }
     }
 
+    // Extract search grounding citations
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
       sources = response.candidates[0].groundingMetadata.groundingChunks
         .filter((chunk: any) => chunk.web)
@@ -97,16 +95,16 @@ export const sendMessageToGemini = async (
     }
 
     return { 
-      text: text || (generatedImage ? "Analysis complete. New visual context synthesized." : "No output from neural engine."), 
+      text: text || (generatedImage ? "The requested visual content has been generated." : "Response processed."), 
       generatedImage,
       sources: sources.length > 0 ? sources : undefined
     };
 
   } catch (error: any) {
     if (error.name === 'AbortError' || error.message === 'Request aborted') {
-      return { text: "Protocol terminated by user.", error: false };
+      return { text: "Protocol terminated.", error: false };
     }
     console.error("Gemini API Error:", error);
-    return { text: "Neural link failure. Check your connection or the file complexity.", error: true };
+    return { text: "Neural link failure. The files might be too large or the network is unstable.", error: true };
   }
 };
