@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, GenerateContentResponse, Part } from "@google/genai";
 import { Message, Attachment, ChatMode } from "../types";
 
@@ -43,20 +44,20 @@ export const sendMessageToGemini = async (
     const config: any = {
       systemInstruction,
       temperature: 0.7,
-      tools: mode === 'search' ? [{ googleSearch: {} }] : [{ googleSearch: {} }], // Default to search enabled for better utility
+      tools: mode === 'search' ? [{ googleSearch: {} }] : [], // Specific tools per mode
     };
 
     // Construct conversation history
-    const contents = history.slice(-10).map(msg => ({
+    const contents = history.slice(-12).map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content || "Look at the context." }]
+      parts: [{ text: msg.content || "Context provided." }]
     }));
 
     // Add current user turn with multimodal attachments
     contents.push({
       role: 'user',
       parts: [
-        { text: prompt || "Analyze the provided content." },
+        { text: prompt || "Analyze the provided items." },
         ...attachmentParts
       ]
     });
@@ -75,15 +76,6 @@ export const sendMessageToGemini = async (
     let generatedImage = "";
     let sources: { title: string; uri: string }[] = [];
 
-    // Check for multimodal outputs if the model supports it in future iterations
-    if (response.candidates?.[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          generatedImage = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        }
-      }
-    }
-
     // Extract search grounding citations
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
       sources = response.candidates[0].groundingMetadata.groundingChunks
@@ -95,7 +87,7 @@ export const sendMessageToGemini = async (
     }
 
     return { 
-      text: text || (generatedImage ? "The requested visual content has been generated." : "Response processed."), 
+      text: text || "Response processed.", 
       generatedImage,
       sources: sources.length > 0 ? sources : undefined
     };
@@ -105,6 +97,6 @@ export const sendMessageToGemini = async (
       return { text: "Protocol terminated.", error: false };
     }
     console.error("Gemini API Error:", error);
-    return { text: "Neural link failure. The files might be too large or the network is unstable.", error: true };
+    return { text: "Neural link failure. The files might be too complex or the context window exceeded.", error: true };
   }
 };

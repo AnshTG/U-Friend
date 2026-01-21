@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Message, Theme, Attachment, ChatSession, ChatMode } from '../types.ts';
 import { sendMessageToGemini } from '../services/geminiService.ts';
@@ -24,17 +25,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   currentTheme, onThemeChange, cookieConsent, onCookieConsentChange 
 }) => {
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
-    if (cookieConsent === 'accepted') {
-      const saved = localStorage.getItem('u-friend-sessions');
+    const saved = localStorage.getItem('u-friend-sessions');
+    if (saved && cookieConsent === 'accepted') {
       try {
-        return saved ? JSON.parse(saved) : [];
+        return JSON.parse(saved);
       } catch (e) { return []; }
     }
     return [];
   });
   
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [showIntro, setShowIntro] = useState(true);
+  // Intro page is for new users only. If consent is already given/denied or sessions exist, skip intro.
+  const [showIntro, setShowIntro] = useState(() => {
+    const hasSeenIntro = localStorage.getItem('u-friend-intro-seen');
+    return !hasSeenIntro && cookieConsent === 'pending';
+  });
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -219,11 +225,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     { id: 'image', label: 'Creative', icon: <ImageIcon size={16} />, desc: 'Visual Synthesis' },
   ];
 
+  const handleFinishIntro = () => {
+    localStorage.setItem('u-friend-intro-seen', 'true');
+    setShowIntro(false);
+  };
+
   if (showIntro) {
     return (
       <IntroScreen 
         theme={currentTheme} 
-        onStart={() => setShowIntro(false)} 
+        onStart={handleFinishIntro} 
         cookieConsent={cookieConsent}
         onCookieConsentChange={onCookieConsentChange}
       />
